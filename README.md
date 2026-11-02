@@ -32,6 +32,17 @@ $ eval $(poetry env activate)
 $ chainlit run hr_assistant/__init__.py -w
 ```
 
+Nuove librerie
+
+```
+
+$ poetry add scikit-learn
+$ poetry add langchain_openai
+
+
+
+```
+
 
 ## Esecuzione modelli in locale
 

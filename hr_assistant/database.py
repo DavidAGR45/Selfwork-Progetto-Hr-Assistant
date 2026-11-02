@@ -1,4 +1,4 @@
-# database.py
+# database.py - Gestione del database vettoriale persistente ChromaDB
 import os
 import httpx
 import chromadb
@@ -7,23 +7,28 @@ from config import Config
 
 
 class Database:
+
+    # Inizializza il client persistente ChromaDB e la funzione di embedding appropriata
     def __init__(self):
+        # Seleziona la funzione di embedding in base al provider configurato
         if Config.PROVIDER == "openai":
             self.embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
                 api_key=Config.AI_API_KEY,
                 model_name=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
             )
         else:
+            # Default: embedding locale con Ollama (es. embeddinggemma-2:270m con dimensione 768)
             self.embedding_fn = embedding_functions.OllamaEmbeddingFunction(
                 url=Config.OLLAMA_URL,
                 model_name=Config.MODEL_NAME,
             )
-            # Timeout esteso a 120s per evitare errori con Ollama durante il caricamento del modello
+            # Timeout esteso a 120s per evitare errori con Ollama durante l'elaborazione dei vettori
             self.embedding_fn._session.timeout = httpx.Timeout(120.0)
 
-        # Initialize persistent client
+        # Inizializza il client persistente su cartella locale (data/chromadb)
         self.client = chromadb.PersistentClient(path=Config.PERSISTENT_DIR)
 
+        # Crea o recupera la collezione dei CV; gestisce l'eccezione se le dimensioni dell'embedding non coincidono
         try:
             self.collection = self.client.get_or_create_collection(
                 name=Config.COLLECTION_NAME, embedding_function=self.embedding_fn
@@ -34,8 +39,8 @@ class Database:
             else:
                 raise e
 
+    # Reimposta la collezione cancellandola e ricreandola (utile in caso di cambio modello o strategia)
     def reset_collection(self):
-        """Reimposta la collezione in caso di cambio modello o mismatch di dimensioni"""
         try:
             self.client.delete_collection(name=Config.COLLECTION_NAME)
         except Exception:
@@ -44,21 +49,24 @@ class Database:
             name=Config.COLLECTION_NAME, embedding_function=self.embedding_fn
         )
 
+    # Aggiunge frammenti di testo, metadati associati e identificativi univoci alla collezione
     def add_documents(self, documents, metadatas, ids):
         self.collection.add(documents=documents, metadatas=metadatas, ids=ids)
 
+    # Esegue la ricerca per similarita vettoriale (cosine similarity) rispetto alla domanda dell'utente
     def query(self, query_text, n_results=1):
         try:
             return self.collection.query(query_texts=[query_text], n_results=n_results)
         except Exception as e:
+            # Se rileva un cambio di dimensione vettoriale al volo, resetta la collezione
             if "dimension" in str(e).lower():
                 print("Rilevato mismatch dimensioni embedding. Resetting collection...")
                 self.reset_collection()
                 return {"documents": [[]], "metadatas": [[]], "ids": [[]]}
             raise e
 
+    # Restituisce un dizionario con i file tracciati nel DB e i rispettivi hash per il controllo incrementale
     def get_tracked_files(self):
-        """Get all unique files and their metadata from the database"""
         result = self.collection.get()
         tracked_files = {}
 
@@ -73,19 +81,25 @@ class Database:
 
         return tracked_files
 
+    # Rimuove tutti i frammenti associati a un file specifico (utilizzato prima di un aggiornamento o dopo l'eliminazione)
     def remove_document_by_source(self, source):
-        """Remove all entries for a specific source file"""
         result = self.collection.get(where={"source": source})
         if result and result["ids"]:
             self.collection.delete(ids=result["ids"])
 
+    # Calcola e restituisce le metriche correnti del database per il pulsante delle statistiche
     def get_stats(self):
         result = self.collection.get()
-        valori_distinti = set(d["source"] for d in result["metadatas"]) if result and result.get("metadatas") else set()
+        # Calcola quanti file sorgente distinti sono presenti tra i metadati dei frammenti
+        valori_distinti = (
+            set(d["source"] for d in result["metadatas"])
+            if result and result.get("metadatas")
+            else set()
+        )
         numero_files = len(valori_distinti)
-        
+
         return f"""
-            Nome Collezione: { self.collection.name}
-            Numero totale Frammenti: {  self.collection.count() }
+            Nome Collezione: {self.collection.name}
+            Numero totale Frammenti: {self.collection.count()}
             Numero Files Elaborati: {numero_files}
         """

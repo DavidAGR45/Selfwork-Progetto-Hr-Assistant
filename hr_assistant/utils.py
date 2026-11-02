@@ -1,19 +1,24 @@
-# utils.py
+# utils.py - Funzioni helper per la comunicazione con i modelli di linguaggio (LLM)
 from config import Config
 from openai import OpenAI, AsyncOpenAI
 
+# Inizializza il client sincrono standard per lo streaming dei messaggi
 client = OpenAI(base_url=Config.AI_API_URL, api_key=Config.AI_API_KEY)
+
+# Inizializza il client asincrono per evitare che chiamate lunghe (es. statistiche) blocchino l'interfaccia Chainlit
 async_client = AsyncOpenAI(base_url=Config.AI_API_URL, api_key=Config.AI_API_KEY)
 
 
 class LLMHelper:
 
+    # Invia la lista dei messaggi al modello in streaming asincrono (non blocca l'event loop di Chainlit)
     @staticmethod
-    def chat(messages):
-        return client.chat.completions.create(
+    async def chat(messages):
+        return await async_client.chat.completions.create(
             model=Config.LLM_MODEL, messages=messages, stream=True
         )
 
+    # Metodo di riserva asincrono per identificare nome e cognome tramite LLM (usato prima dell'estrazione regex)
     @staticmethod
     async def get_candidate_name(context):
         response = await async_client.chat.completions.create(
@@ -27,8 +32,9 @@ class LLMHelper:
                 }
             ],
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
 
+    # Chiede al modello di formattare le metriche del database a elenco puntato con spiegazione della percentuale
     @staticmethod
     async def get_db_stats(context):
         prompt = f"""Dati del database:
@@ -52,20 +58,38 @@ Collezione "[Nome Collezione]"
         )
         return response.choices[0].message.content or ""
 
+    # Costruisce il prompt dettagliato per l'assistente HR con contesto, domanda e recapiti del candidato
     @staticmethod
-    def create_prompt(context, question, candidate_name="Candidato", email="N/D", phone="N/D"):
-        return f"""
-            Dato il seguente contesto: 
-            [[[
-            {context}
-            ]]].
-            Rispondi alla domanda dell'utente: [[[ {question}]]].
-            Spiega che nel file individuato c'e' il profilo piu' adatto. 
+    def create_prompt(
+        context, question, candidate_name="Candidato", email="N/D", phone="N/D"
+    ):
+        # Se il documento e un CV valido con dati di contatto, include la scheda candidato
+        has_candidate = candidate_name not in ["Candidato", "N/D"] or email != "N/D" or phone != "N/D"
+
+        if has_candidate:
+            contacts_instruction = f"""
+            Spiega che nel file individuato c'e' il profilo piu' adatto.
             Argomenta la scelta utilizzando il contenuto del testo individuato nel contesto.
             Alla fine crea una sezione per i contatti del candidato indicando con precisione:
             - Nome: [[[ {candidate_name} ]]]
             - Email: [[[ {email} ]]]
             - Telefono: [[[ {phone} ]]]
             Dopo la sezione dei contatti indica il Nome del file del cv, non lo nominare mai prima di questa sezione.
-            Se non trovi corrispondenza in nessun cv non inventare.
+            """
+        else:
+            # Per articoli o testi generici (es. mit.txt), omette la scheda contatti
+            contacts_instruction = """
+            Argomenta la risposta utilizzando chiaramente le informazioni fornite nel contesto.
+            Trattandosi di un articolo o saggio informativo e non del CV di un candidato, ometti la sezione dei contatti personali.
+            Alla fine indica brevemente il nome del file di riferimento.
+            """
+
+        return f"""
+            Dato il seguente contesto: 
+            [[[
+            {context}
+            ]]].
+            Rispondi alla domanda dell'utente: [[[ {question}]]].
+            {contacts_instruction}
+            Se non trovi corrispondenza nel contesto, non inventare informazioni.
         """
