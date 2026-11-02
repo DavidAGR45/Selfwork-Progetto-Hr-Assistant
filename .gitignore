@@ -1,0 +1,55 @@
+# ============================================
+# Ambienti Virtuali e Dipendenze
+# ============================================
+.venv/
+venv/
+ENV/
+env/
+poetry.lock
+
+# ============================================
+# Cache e Bytecode Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# ============================================
+# Database e Dati Persistenti (ChromaDB / SQLite)
+# ============================================
+data/
+*.sqlite3
+*.db
+chroma/
+
+# ============================================
+# Chainlit
+# ============================================
+.chainlit/
+.files/
+
+# ============================================
+# File di Configurazione e Chiavi Segrete
+# ============================================
+.env
+.env.*
+!.env.example
+
+# ============================================
+# Build e Distribuzione
+# ============================================
+build/
+dist/
+*.egg-info/
+
+# ============================================
+# Editor e Sistema Operativo
+# ============================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
