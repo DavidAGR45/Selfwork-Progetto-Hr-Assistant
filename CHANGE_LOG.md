@@ -10,4 +10,8 @@
 
 - Semantic Chunking
 
+## 06
+
+- Refactoring Semantic Chunking
+
 

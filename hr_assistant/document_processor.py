@@ -175,8 +175,9 @@ class DocumentProcessor:
     def get_chunks(content: str, candidate_name: str = "") -> list[str]:
         strategy = getattr(Config, "CHUNK_STRATEGY", "semantic_chunking")
         if strategy == "semantic_chunking":
-            # Chunking semantico tramite similarita del coseno tra embedding di frasi (Step 05)
-            return SemanticChunking.chunk_it(content)
+            # Chunking semantico rifattorizzato a oggetti (Step 06)
+            sc = SemanticChunking()
+            return sc.chunk_text(content)
         elif strategy == "semantic_sections":
             # Chunking a sezioni Markdown con iniezione del contesto candidato (Step 02)
             return DocumentProcessor.chunk_semantic_sections(content, candidate_name)

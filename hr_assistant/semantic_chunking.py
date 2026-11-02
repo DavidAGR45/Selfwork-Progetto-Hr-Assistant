@@ -1,4 +1,4 @@
-# semantic_chunking.py - Algoritmo di chunking semantico basato sulla distanza tra embedding di frasi consecutive
+# semantic_chunking.py - Algoritmo di chunking semantico rifattorizzato a oggetti (Step 06)
 import os
 import re
 import numpy as np
@@ -6,126 +6,102 @@ from langchain_openai import OpenAIEmbeddings
 from sklearn.metrics.pairwise import cosine_similarity
 from config import Config
 
+# Spiegazione Generale della Logica:
+# Questo codice implementa un sistema di "semantic chunking", ovvero un modo intelligente di dividere un testo lungo in parti più piccole (chunk) che hanno senso semantico.
+# Invece di dividere il testo in modo meccanico (per esempio ogni 500 caratteri), questo sistema usa l'intelligenza artificiale per capire dove il significato del testo cambia significativamente.
+# Lo fa analizzando ogni frase nel suo contesto e utilizzando gli embedding per misurare quanto due frasi consecutive sono semanticamente diverse.
+# Quando trova un punto dove la differenza semantica è particolarmente alta (sopra il 95° percentile per default), usa quel punto come confine per creare un nuovo chunk.
+
 
 class SemanticChunking:
 
-    # Calcola la distanza del coseno tra ogni frase e la frase successiva
-    @staticmethod
-    def calculate_cosine_distances(sentences):
-        distances = []
-        for i in range(len(sentences) - 1):
-            # Embedding della frase corrente e della frase successiva
-            embedding_current = sentences[i]["combined_sentence_embedding"]
-            embedding_next = sentences[i + 1]["combined_sentence_embedding"]
+    # Inizializza i parametri di soglia percentile e buffer di contesto
+    def __init__(self, breakpoint_percentile=95, buffer_size=1):
+        self.breakpoint_percentile = breakpoint_percentile
+        self.buffer_size = buffer_size
 
-            # Calcolo della similarita del coseno (valore da 0 a 1)
-            similarity = cosine_similarity([embedding_current], [embedding_next])[0][0]
-
-            # Conversione in distanza del coseno: 1 - similarita (piu e alto, piu le frasi sono semanticamente diverse)
-            distance = 1 - similarity
-
-            # Aggiunge la distanza alla lista e al dizionario della frase
-            distances.append(distance)
-            sentences[i]["distance_to_next"] = distance
-
-        return distances, sentences
-
-    # Aggiunge un buffer di frasi precedenti e successive a ciascuna frase per mantenere il contesto semantico
-    @staticmethod
-    def combine_sentences(sentences, buffer_size=1):
-        for i in range(len(sentences)):
-            combined_sentence = ""
-
-            # Concatena le frasi precedenti in base al buffer_size
-            for j in range(i - buffer_size, i):
-                if j >= 0:
-                    combined_sentence += sentences[j]["sentence"] + " "
-
-            # Aggiunge la frase corrente
-            combined_sentence += sentences[i]["sentence"]
-
-            # Concatena le frasi successive in base al buffer_size
-            for j in range(i + 1, i + 1 + buffer_size):
-                if j < len(sentences):
-                    combined_sentence += " " + sentences[j]["sentence"]
-
-            # Memorizza la frase combinata con contesto
-            sentences[i]["combined_sentence"] = combined_sentence
-
-        return sentences
-
-    # Metodo principale: suddivide il testo in chunk basandosi sui punti di rottura semantica
-    @staticmethod
-    def chunk_it(txt):
-        # Suddivide il testo in singole frasi riconoscendo i punti, punti interrogativi ed esclamativi
-        single_sentences_list = re.split(r"(?<=[.?!])\s+", txt)
-        # Rimuove eventuali frasi vuote o composte solo da spazi
-        single_sentences_list = [s.strip() for s in single_sentences_list if s.strip()]
-
-        if not single_sentences_list:
-            return []
-        if len(single_sentences_list) == 1:
-            return single_sentences_list
-
-        # Crea un dizionario per ciascuna frase con il rispettivo indice
-        sentences = [
-            {"sentence": x, "index": i} for i, x in enumerate(single_sentences_list)
-        ]
-
-        # Applica il buffer di contesto prima e dopo ogni frase
-        sentences = SemanticChunking.combine_sentences(sentences)
-        texts_to_embed = [x["combined_sentence"] for x in sentences]
-
-        # Genera gli embedding per ogni frase combinata (supporta sia OpenAI che Ollama locale)
+        # Configura la funzione di embedding: OpenAI se configurato con chiave, altrimenti Ollama locale
         if Config.PROVIDER == "openai" and getattr(Config, "OPENAI_KEY", ""):
-            oaiembeds = OpenAIEmbeddings(
+            self._embed_model = OpenAIEmbeddings(
                 openai_api_key=Config.OPENAI_KEY,
                 model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
             )
-            embeddings = oaiembeds.embed_documents(texts_to_embed)
+            self._embed_fn = self._embed_model.embed_documents
         else:
             # Default: embedding locale tramite Ollama (es. embeddinggemma-2:270m)
             import ollama
-            res = ollama.embed(model=Config.MODEL_NAME, input=texts_to_embed)
-            embeddings = res["embeddings"]
+            self._embed_fn = lambda texts: ollama.embed(model=Config.MODEL_NAME, input=texts)["embeddings"]
 
-        # Assegna l'embedding generato a ciascuna frase
-        for i, sentence in enumerate(sentences):
-            sentence["combined_sentence_embedding"] = embeddings[i]
-
-        # Calcola le distanze del coseno tra frasi adiacenti
-        distances, sentences = SemanticChunking.calculate_cosine_distances(sentences)
-        if not distances:
-            return [txt]
-
-        # Calcola la soglia di taglio al 95° percentile: le distanze sopra questo valore rappresentano un cambio di argomento
-        breakpoint_percentile_threshold = 95
-        breakpoint_distance_threshold = np.percentile(
-            distances, breakpoint_percentile_threshold
-        )
-
-        # Trova gli indici dove la distanza supera la soglia (punti di taglio)
-        indices_above_thresh = [
-            i for i, x in enumerate(distances) if x > breakpoint_distance_threshold
+    # Divide il testo in frasi e arricchisce ogni frase con il contesto delle frasi adiacenti (buffer)
+    def _process_sentences(self, text):
+        # Suddivide il testo riconoscendo i punti, punti interrogativi ed esclamativi
+        raw_sentences = re.split(r"(?<=[.?!])\s+", text)
+        sentences = [
+            {"sentence": s.strip(), "index": i}
+            for i, s in enumerate(raw_sentences)
+            if s.strip()
         ]
 
-        # Raggruppa le frasi originali nei chunk finali in base agli indici di rottura trovati
-        start_index = 0
+        # Combina ogni frase con il suo contesto precedente e successivo in base al buffer_size
+        for i, current in enumerate(sentences):
+            context_range = range(
+                max(0, i - self.buffer_size),
+                min(len(sentences), i + self.buffer_size + 1),
+            )
+            current["combined_sentence"] = " ".join(
+                sentences[j]["sentence"] for j in context_range
+            )
+
+        return sentences
+
+    # Calcola la distanza del coseno tra i vettori di embedding di frasi consecutive
+    def _calculate_distances(self, sentences):
+        # Calcola gli embedding per tutte le frasi combinate
+        embeddings = self._embed_fn([s["combined_sentence"] for s in sentences])
+
+        # Calcola la distanza del coseno: 1 - similarita (valori piu alti indicano un distacco semantico)
+        distances = []
+        for i in range(len(sentences) - 1):
+            distance = 1 - cosine_similarity([embeddings[i]], [embeddings[i + 1]])[0][0]
+            distances.append(distance)
+
+        return distances
+
+    # Metodo principale: suddivide il testo calcolando i punti di taglio sul percentile
+    def chunk_text(self, text):
+        # Se il testo e vuoto, restituisce lista vuota
+        if not text or not text.strip():
+            return []
+
+        # Elabora le frasi e i relativi buffer
+        sentences = self._process_sentences(text)
+        if not sentences:
+            return []
+        if len(sentences) == 1:
+            return [sentences[0]["sentence"]]
+
+        # Calcola le distanze semantiche tra frasi consecutive
+        distances = self._calculate_distances(sentences)
+        if not distances:
+            return [text.strip()]
+
+        # Determina la soglia di taglio basata sul percentile (es. 95)
+        threshold = np.percentile(distances, self.breakpoint_percentile)
+        split_points = [i for i, d in enumerate(distances) if d > threshold]
+
+        # Crea i chunk finali unendo le frasi comprese tra i punti di rottura
         chunks = []
-
-        for index in indices_above_thresh:
-            end_index = index
-            # Estrae il blocco di frasi dal punto di inizio al punto di rottura
-            group = sentences[start_index : end_index + 1]
-            combined_text = " ".join([d["sentence"] for d in group])
-            if combined_text.strip():
-                chunks.append(combined_text.strip())
-            start_index = index + 1
-
-        # Aggiunge l'ultimo gruppo di frasi rimaste
-        if start_index < len(sentences):
-            combined_text = " ".join([d["sentence"] for d in sentences[start_index:]])
-            if combined_text.strip():
-                chunks.append(combined_text.strip())
+        start = 0
+        for point in split_points + [len(sentences) - 1]:
+            chunk = " ".join(s["sentence"] for s in sentences[start : point + 1]).strip()
+            if chunk:
+                chunks.append(chunk)
+            start = point + 1
 
         return chunks
+
+    # Metodo statico di compatibilita rapida
+    @staticmethod
+    def chunk_it(text):
+        sc = SemanticChunking()
+        return sc.chunk_text(text)
