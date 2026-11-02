@@ -56,7 +56,9 @@ All'avvio dell'applicazione (`DocumentProcessor.process_documents(db)`), il sist
    - Il flusso di chat esegue ora **una sola chiamata al modello di linguaggio** (la generazione della risposta in streaming), dimezzando la latenza complessiva.
 
 3. **Aggiornamento del Prompt con i Contatti (`utils.py`)**:
-   - Modificato `LLMHelper.create_prompt` per accettare ed esporre al modello anche l'email e il numero telefonico del candidato selezionato, permettendo all'assistente di fornire un riscontro completo per le risorse umane.
+   - Modificato `LLMHelper.create_prompt` per accogliere ed esporre esplicitamente nel prompt per il modello il nome, l'email e il telefono del candidato selezionato.
+   - Rispetta le specifiche del template di step 04, richiedendo la sezione contatti prima dell'indicazione del nome file.
 
-4. **Sinergia con il Tracciamento Incrementale (`document_processor.py`)**:
-   - L'estrazione dei metadati e il chunking operano perfettamente all'interno del flusso di sincronizzazione (`files_to_add`, `files_to_update`, `files_to_remove` via MD5 hash), evitando rielaborazioni inutili se i file non sono stati modificati.
+4. **Integrazione con le Action di Chainlit (`__init__.py` & `database.py`)**:
+   - Mantenuta la piena compatibilità con i bottoni interattivi di Chainlit (`Statistiche Database` e `Reindex Database`).
+   - L'azione `db_reindex` esegue in tempo reale `DocumentProcessor.process_documents(db)` riapplicando le strategie di chunking e l'estrazione contatti.

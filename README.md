@@ -9,7 +9,7 @@ $ poetry new HR_Assistant
 
 $ cd HR_Assistant
 
-$ eval $(poetry env activate)
+$ poetry env activate
 
 $ poetry add chromadb openai ollama chainlit
 

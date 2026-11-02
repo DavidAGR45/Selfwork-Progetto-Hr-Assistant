@@ -35,7 +35,7 @@ class DocumentProcessor:
     def extract_candidate_info(content: str) -> dict:
         """
         Estrae deterministamente nome e cognome, email e numero di telefono dal testo del CV.
-        Risolve il Punto 02 eliminando la necessità di una chiamata LLM aggiuntiva.
+        Risolve il Punto 02 eliminando la necessità di chiamate LLM aggiuntive.
         """
         # Nome e cognome
         name = "Candidato"
@@ -169,7 +169,7 @@ class DocumentProcessor:
     @staticmethod
     def chunk_legacy(content: str) -> list[str]:
         """
-        Tecnica 0 (Legacy): Metodo originale con replace di newline e split su '### '.
+        Tecnica 0 (Legacy): Metodo originario con replace di newline e split su '### '.
         """
         raw_chunks = content.replace("\n", ".").split("### ")
         return [c for c in raw_chunks if not c.isspace() and c != ""]
@@ -237,7 +237,8 @@ class DocumentProcessor:
             f: DocumentProcessor.get_document_metadata(
                 os.path.join(Config.DOCUMENTS_DIR, f)
             )
-            for f in os.listdir(Config.DOCUMENTS_DIR) if f.endswith(".txt")
+            for f in os.listdir(Config.DOCUMENTS_DIR)
+            if f.endswith(".txt")
         }
         print("Current files in directory:", list(current_files.keys()))
 
