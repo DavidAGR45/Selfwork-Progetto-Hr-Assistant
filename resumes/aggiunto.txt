@@ -1,0 +1,64 @@
+# Marco Giallino
+**Sviluppatore AI Senior**  
+Via Milano 45, Roma  
+Tel: 333-9876543  
+Email: marco.rossi@email.it
+
+## Profilo Professionale
+Sviluppatore software senior con oltre 8 anni di esperienza nello sviluppo di applicazioni web e mobile. Specializzato in tecnologie JavaScript/TypeScript e framework moderni come React e Node.js. Esperto in architetture cloud-native e metodologie DevOps.
+
+## Esperienza Professionale
+
+### Lead Developer - Tech Solutions Srl
+*2020 - Presente*
+- Leadership di un team di 5 sviluppatori
+- Architettura e sviluppo di applicazioni enterprise
+- Implementazione di pratiche DevOps e CI/CD
+- Ottimizzazione delle performance e refactoring del codice legacy
+- Mentoring di sviluppatori junior
+
+### Senior Developer - Web Innovations
+*2017 - 2020*
+- Sviluppo di applicazioni web full-stack
+- Implementazione di microservizi
+- Integrazione con API di terze parti
+- Ottimizzazione delle query database
+- Code review e best practices
+
+### Developer - Digital Systems
+*2015 - 2017*
+- Sviluppo frontend con React
+- Implementazione di UI/UX responsive
+- Integrazione con backend RESTful
+- Testing unitario e di integrazione
+
+## Competenze Tecniche
+- Linguaggi: JavaScript, TypeScript, Python, Java
+- Frontend: React, Vue.js, HTML5, CSS3, SASS
+- Backend: Node.js, Express, Django
+- Database: PostgreSQL, MongoDB, Redis
+- DevOps: Docker, Kubernetes, AWS, CI/CD
+- Testing: Jest, Cypress, Pytest
+- Version Control: Git, GitHub/GitLab
+- Metodologie: Agile, Scrum, TDD
+
+## Certificazioni
+- AWS Certified Solutions Architect
+- Google Cloud Professional Developer
+- MongoDB Certified Developer
+- Scrum Master Certified
+
+## Formazione
+### Laurea in Informatica
+Università di Roma "La Sapienza"  
+*2011 - 2015*
+
+## Lingue
+- Italiano (Madrelingua)
+- Inglese (C1)
+- Spagnolo (B2)
+
+## Progetti Personali
+- Contributore open source su GitHub
+- Sviluppo di applicazioni mobile con React Native
+- Blog tecnico su sviluppo software e best practices

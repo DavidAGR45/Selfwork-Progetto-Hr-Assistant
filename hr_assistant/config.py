@@ -26,14 +26,17 @@ class Config:
     # LLM / Chat Completion
     if PROVIDER == "groq":
         LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
+        LLM_MODEL_LOW = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
         AI_API_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
         AI_API_KEY = os.getenv("GROQ_API_KEY", "")
     elif PROVIDER == "openai":
         LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+        LLM_MODEL_LOW = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
         AI_API_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         AI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    else:  # default: ollama
+    else:  # default: ollama locale
         LLM_MODEL = os.getenv("OLLAMA_LLM_MODEL", "bonsai-2:9b")
+        LLM_MODEL_LOW = os.getenv("OLLAMA_LLM_MODEL", "bonsai-2:9b")
         AI_API_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         AI_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 

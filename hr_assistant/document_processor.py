@@ -2,14 +2,40 @@
 import os
 import re
 import uuid
+import hashlib
 from config import Config
 
 
 class DocumentProcessor:
+
+    @staticmethod
+    def read_first_lines(file_path, n_lines=100):
+        with open(file_path, "r", encoding="utf-8") as file:
+            return [line.strip() for line, _ in zip(file, range(n_lines))]
+
+    @staticmethod
+    def get_file_hash(file_path):
+        """Calculate MD5 hash of file content"""
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    @staticmethod
+    def get_document_metadata(file_path):
+        """Get document metadata including hash and last modified time"""
+        return {
+            "hash": DocumentProcessor.get_file_hash(file_path),
+            "last_modified": os.path.getmtime(file_path),
+            "source": os.path.basename(file_path),
+        }
+
     @staticmethod
     def extract_candidate_info(content: str) -> dict:
         """
-        Estrae nome e cognome, email e numero di telefono dal testo del CV.
+        Estrae deterministamente nome e cognome, email e numero di telefono dal testo del CV.
+        Risolve il Punto 02 eliminando la necessità di una chiamata LLM aggiuntiva.
         """
         # Nome e cognome
         name = "Candidato"
@@ -50,8 +76,8 @@ class DocumentProcessor:
         """
         Tecnica 1: Semantic Section Chunking.
         Divide il testo in base alle sezioni (### / ##) preservando la formattazione markdown.
-        Gestisce le intestazioni padre (es. '### ESPERIENZA PROFESSIONALE') associandole
-        alle rispettive sotto-sezioni, e inietta l'identità del candidato per un recupero semantico mirato.
+        Gestisce le intestazioni padre associandole alle rispettive sotto-sezioni
+        e inietta l'identità del candidato in testa a ogni chunk.
         """
         lines = content.splitlines()
         chunks = []
@@ -107,7 +133,7 @@ class DocumentProcessor:
         """
         Tecnica 2: Sliding Window con Overlap.
         Crea chunk di dimensione definita con sovrapposizione tra paragrafi,
-        evitando di spezzare concetti su blocchi distinti.
+        iniettando il contesto del candidato.
         """
         paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
         chunks = []
@@ -143,8 +169,7 @@ class DocumentProcessor:
     @staticmethod
     def chunk_legacy(content: str) -> list[str]:
         """
-        Tecnica 0 (Legacy): Chunking iniziale naive.
-        Sostituzione dei newline con punti e split su '### '.
+        Tecnica 0 (Legacy): Metodo originale con replace di newline e split su '### '.
         """
         raw_chunks = content.replace("\n", ".").split("### ")
         return [c for c in raw_chunks if not c.isspace() and c != ""]
@@ -166,36 +191,89 @@ class DocumentProcessor:
             return DocumentProcessor.chunk_semantic_sections(content, candidate_name)
 
     @staticmethod
-    def process_documents():
+    def process_single_document(file_path):
+        """Process a single document into chunks with enriched metadata"""
         documents = []
         metadatas = []
         ids = []
 
-        for filename in os.listdir(Config.DOCUMENTS_DIR):
-            if filename.endswith(".txt"):
-                file_path = os.path.join(Config.DOCUMENTS_DIR, filename)
-                with open(file_path, "r", encoding="utf-8") as file:
-                    raw_content = file.read()
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
 
-                info = DocumentProcessor.extract_candidate_info(raw_content)
-                chunks = DocumentProcessor.get_chunks(raw_content, info["candidate_name"])
+        file_metadata = DocumentProcessor.get_document_metadata(file_path)
+        info = DocumentProcessor.extract_candidate_info(content)
+        chunks = DocumentProcessor.get_chunks(content, info["candidate_name"])
 
-                for chunk in chunks:
-                    documents.append(chunk)
-                    metadatas.append(
-                        {
-                            "source": filename,
-                            "candidate_name": info["candidate_name"],
-                            "email": info["email"],
-                            "phone": info["phone"],
-                            "strategy": getattr(Config, "CHUNK_STRATEGY", "semantic_sections"),
-                        }
-                    )
-                    ids.append(str(uuid.uuid4()))
+        for chunk in chunks:
+            documents.append(chunk)
+            metadatas.append(
+                {
+                    **file_metadata,
+                    "candidate_name": info["candidate_name"],
+                    "email": info["email"],
+                    "phone": info["phone"],
+                    "strategy": getattr(Config, "CHUNK_STRATEGY", "semantic_sections"),
+                }
+            )
+            ids.append(str(uuid.uuid4()))
 
         return documents, metadatas, ids
 
     @staticmethod
-    def read_first_lines(file_path, n_lines=100):
-        with open(file_path, "r", encoding="utf-8") as file:
-            return [line.strip() for line, _ in zip(file, range(n_lines))]
+    def process_documents(db):
+        """Process documents and sync with database, handling strategy changes and incremental sync"""
+        # Verifica se la strategia di chunking salvata nel database è cambiata
+        existing_count = db.collection.count()
+        if existing_count > 0:
+            sample = db.collection.get(limit=1, include=["metadatas"])
+            if sample and sample["metadatas"] and sample["metadatas"][0]:
+                saved_strategy = sample["metadatas"][0].get("strategy")
+                if saved_strategy != Config.CHUNK_STRATEGY:
+                    print(f"Cambio strategia o metadati non aggiornati ({saved_strategy} -> {Config.CHUNK_STRATEGY}). Resetting collection...")
+                    db.reset_collection()
+
+        # Get current files in directory
+        current_files = {
+            f: DocumentProcessor.get_document_metadata(
+                os.path.join(Config.DOCUMENTS_DIR, f)
+            )
+            for f in os.listdir(Config.DOCUMENTS_DIR) if f.endswith(".txt")
+        }
+        print("Current files in directory:", list(current_files.keys()))
+
+        # Get existing files from database
+        existing_files = db.get_tracked_files()
+        print("Existing files in db:", list(existing_files.keys()))
+
+        # Identify files to add, update, and remove
+        files_to_add = set(current_files.keys()) - set(existing_files.keys())
+        files_to_remove = set(existing_files.keys()) - set(current_files.keys())
+        files_to_update = {
+            f
+            for f in set(current_files.keys()) & set(existing_files.keys())
+            if current_files[f]["hash"] != existing_files[f]["hash"]
+        }
+
+        print("Files to add:", files_to_add)
+        print("Files to remove:", files_to_remove)
+        print("Files to update:", files_to_update)
+
+        # Process updates and additions
+        for action, files in [("add", files_to_add), ("update", files_to_update)]:
+            for filename in files:
+                file_path = os.path.join(Config.DOCUMENTS_DIR, filename)
+                documents, metadatas, ids = DocumentProcessor.process_single_document(file_path)
+
+                if action == "update":
+                    # Remove old entries first
+                    db.remove_document_by_source(filename)
+
+                # Add new entries
+                if documents:
+                    db.add_documents(documents, metadatas, ids)
+
+        # Remove deleted files from database
+        for filename in files_to_remove:
+            db.remove_document_by_source(filename)
+
+        return len(files_to_add), len(files_to_update), len(files_to_remove)

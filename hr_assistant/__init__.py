@@ -5,31 +5,16 @@ from database import Database
 from config import Config
 from utils import LLMHelper
 
-
-# Process documents
-documents, metadatas, ids = DocumentProcessor.process_documents()
-
-# print("*" * 80)
-# print("Chucks, metadata e ids")
-# print("*" * 80)
-# print(documents, metadatas, ids)
-
-# Initialize database and add documents
 db = Database()
-existing_count = db.collection.count()
-strategy_changed = False
-if existing_count > 0:
-    res = db.collection.get(limit=1, include=["metadatas"])
-    if res["metadatas"] and res["metadatas"][0].get("strategy") != Config.CHUNK_STRATEGY:
-        strategy_changed = True
 
-if existing_count == 0 or strategy_changed:
-    db.reset_collection()
-    db.add_documents(documents, metadatas, ids) 
+# Process documents syncing folder to db
+added, updated, removed = DocumentProcessor.process_documents(db)
+print(f"Document sync complete: {added} added, {updated} updated, {removed} removed")
 
 
 @cl.on_chat_start
-def start():
+async def start():
+
     cl.user_session.set(
         "messages",
         [
@@ -63,12 +48,6 @@ async def handle_message(message: cl.Message):
 
     messages = cl.user_session.get("messages", [])
     messages.append({"role": "user", "content": prompt})
-
-    # print("*" * 80)
-    # print("*" * 80)
-    # print("prompt", prompt)
-    # print("*" * 80)
-    # print("*" * 80)
 
     response_message = cl.Message(content="")
     await response_message.send()

@@ -16,12 +16,12 @@ class LLMHelper:
     @staticmethod
     async def get_candidate_name(context):
         response = client.chat.completions.create(
-            model=Config.LLM_MODEL,
+            model=Config.LLM_MODEL_LOW,
             messages=[
                 {
                     "role": "user",
                     "content": f"""
-                      Dato il seguente contesto individua il nome e cognome del candidato e ritorna solo il nome e cognome del candidato. Quello che sto per fornirti e' l'inizio del curriculum vitae del candidato: {context}
+                      Dato il seguente contesto individua il nome e cognome del candidato e ritorna solo il nome e cognome del candidato. Quello che sto per fornirti e' il curriculum vite del candidato: {context}
                       """,
                 }
             ],

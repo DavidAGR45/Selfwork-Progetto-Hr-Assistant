@@ -30,15 +30,15 @@ Questo causava tre problemi principali:
 In [`config.py`](hr_assistant/config.py) è ora possibile selezionare facilmente la strategia desiderata:
 ```python
 # Opzioni disponibili: "semantic_sections", "sliding_window", "legacy"
-CHUNK_STRATEGY = "semantic_sections"
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 100
+CHUNK_STRATEGY = os.getenv("CHUNK_STRATEGY", "semantic_sections")
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "500"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
 ```
-All'avvio dell'applicazione ([`__init__.py`](hr_assistant/__init__.py)), il sistema verifica automaticamente se la strategia configurata coincide con quella memorizzata nei metadati del database; in caso di cambio strategia, la collezione viene rigenerata al volo in automatico.
+All'avvio dell'applicazione (`DocumentProcessor.process_documents(db)`), il sistema verifica automaticamente se la strategia configurata coincide con quella memorizzata nei metadati del database; in caso di cambio strategia, la collezione viene rigenerata al volo in automatico.
 
 ---
 
-## 02. Provate ad eliminare la doppia chiamata al modello di linguaggio, quella necessaria a tirare fuori il nome e cognome del candidato. Meglio ancora,  provate a tirar fuori anche il numero di telefono ed e-mail
+## 02. Provate ad eliminare la doppia chiamata al modello di linguaggio, quella necessaria a tirare fuori il nome e cognome del candidato. Meglio ancora, provate a tirar fuori anche il numero di telefono ed e-mail
 
 ### Passaggi effettuati per risolvere il Punto 02:
 
@@ -48,7 +48,7 @@ All'avvio dell'applicazione ([`__init__.py`](hr_assistant/__init__.py)), il sist
      - **Nome e Cognome**: rilevato dall'intestazione iniziale o dalla riga `Nome:` e normalizzato in formato Title Case.
      - **Email**: individuata tramite pattern per indirizzi email (`[\w\.-]+@[\w\.-]+\.\w+`).
      - **Numero di Telefono**: individuato tramite pattern per prefissi e numerazioni telefoniche (`tel`/`telefono`).
-   - In `process_documents()`, questi dati vengono associati direttamente al dizionario `metadatas` di ciascun chunk (`source`, `candidate_name`, `email`, `phone`).
+   - In `process_single_document()`, questi dati vengono integrati nei metadati del chunk insieme a `hash`, `last_modified` e `source`, garantendo piena sinergia con il sistema di sincronizzazione incrementale.
 
 2. **Eliminazione della prima chiamata all'LLM a runtime (`__init__.py`)**:
    - Nella funzione `handle_message`, è stata rimossa la lettura del file dal disco (`DocumentProcessor.read_first_lines`) e la chiamata asincrona `LLMHelper.get_candidate_name(...)`.
@@ -58,6 +58,5 @@ All'avvio dell'applicazione ([`__init__.py`](hr_assistant/__init__.py)), il sist
 3. **Aggiornamento del Prompt con i Contatti (`utils.py`)**:
    - Modificato `LLMHelper.create_prompt` per accettare ed esporre al modello anche l'email e il numero telefonico del candidato selezionato, permettendo all'assistente di fornire un riscontro completo per le risorse umane.
 
-4. **Ottimizzazione della persistenza vettoriale (`database.py` e `__init__.py`)**:
-   - Aggiunto il controllo `if db.collection.count() == 0:` prima di eseguire `db.add_documents()`, evitando di ricaricare ed embeddare nuovamente tutti i chunk ad ogni riavvio dell'applicazione.
-   - Aggiunto il metodo `reset_collection()` in `Database` per consentire la pulizia della collezione in caso di aggiornamenti dello schema dei metadati.
+4. **Sinergia con il Tracciamento Incrementale (`document_processor.py`)**:
+   - L'estrazione dei metadati e il chunking operano perfettamente all'interno del flusso di sincronizzazione (`files_to_add`, `files_to_update`, `files_to_remove` via MD5 hash), evitando rielaborazioni inutili se i file non sono stati modificati.
