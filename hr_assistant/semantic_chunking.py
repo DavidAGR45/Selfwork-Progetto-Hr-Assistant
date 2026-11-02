@@ -1,8 +1,8 @@
-# semantic_chunking.py - Algoritmo di chunking semantico rifattorizzato a oggetti (Step 06)
+# semantic_chunking.py - Algoritmo di chunking semantico rifattorizzato a oggetti (Step 06.1)
 import os
 import re
 import numpy as np
-from langchain_openai import OpenAIEmbeddings
+from custom_embedding import CustomEmbeddingFunction
 from sklearn.metrics.pairwise import cosine_similarity
 from config import Config
 
@@ -20,17 +20,8 @@ class SemanticChunking:
         self.breakpoint_percentile = breakpoint_percentile
         self.buffer_size = buffer_size
 
-        # Configura la funzione di embedding: OpenAI se configurato con chiave, altrimenti Ollama locale
-        if Config.PROVIDER == "openai" and getattr(Config, "OPENAI_KEY", ""):
-            self._embed_model = OpenAIEmbeddings(
-                openai_api_key=Config.OPENAI_KEY,
-                model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
-            )
-            self._embed_fn = self._embed_model.embed_documents
-        else:
-            # Default: embedding locale tramite Ollama (es. embeddinggemma-2:270m)
-            import ollama
-            self._embed_fn = lambda texts: ollama.embed(model=Config.MODEL_NAME, input=texts)["embeddings"]
+        # Riutilizza la funzione di embedding unificata (supporta openai, local con SentenceTransformer, ollama)
+        self.embedding_function = CustomEmbeddingFunction()
 
     # Divide il testo in frasi e arricchisce ogni frase con il contesto delle frasi adiacenti (buffer)
     def _process_sentences(self, text):
@@ -56,8 +47,8 @@ class SemanticChunking:
 
     # Calcola la distanza del coseno tra i vettori di embedding di frasi consecutive
     def _calculate_distances(self, sentences):
-        # Calcola gli embedding per tutte le frasi combinate
-        embeddings = self._embed_fn([s["combined_sentence"] for s in sentences])
+        # Calcola gli embedding per tutte le frasi combinate usando la funzione personalizzata unificata
+        embeddings = self.embedding_function([s["combined_sentence"] for s in sentences])
 
         # Calcola la distanza del coseno: 1 - similarita (valori piu alti indicano un distacco semantico)
         distances = []

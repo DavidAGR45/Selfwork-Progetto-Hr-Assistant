@@ -34,6 +34,28 @@ class LLMHelper:
         )
         return response.choices[0].message.content or ""
 
+    # Classifica l'intento dell'utente in modo asincrono: "search_cv" (ricerca nuovo) o "info_cv" (approfondimento)
+    @staticmethod
+    async def classify_intent(user_question):
+        intent_prompt = f"""
+Sei un assistente AI che aiuta a gestire la selezione del personale e le domande sui CV.
+Classifica la seguente richiesta dell'utente in una delle due categorie:
+- "search_cv": Se l'utente sta cercando un nuovo candidato o profilo (es. "cerco uno sviluppatore", "chi sa usare Docker?").
+- "info_cv": Se l'utente sta chiedendo informazioni o chiarimenti su un candidato già trovato in precedenza (es. "quali sono i suoi contatti?", "quanti anni di esperienza ha?", "parlami dei suoi hobby").
+
+Domanda dell'utente: "{user_question}"
+
+Rispondi unicamente con "search_cv" o "info_cv", senza aggiungere altro testo o punteggiatura.
+"""
+        response = await async_client.chat.completions.create(
+            model=Config.LLM_MODEL_LOW,
+            messages=[{"role": "user", "content": intent_prompt}],
+        )
+        content = (response.choices[0].message.content or "").strip().lower()
+        if "info_cv" in content:
+            return "info_cv"
+        return "search_cv"
+
     # Chiede al modello di formattare le metriche del database a elenco puntato con spiegazione della percentuale
     @staticmethod
     async def get_db_stats(context):

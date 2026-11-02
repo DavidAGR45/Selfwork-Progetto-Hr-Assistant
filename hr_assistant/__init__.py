@@ -81,28 +81,68 @@ async def start():
 async def handle_message(message: cl.Message):
     user_question = message.content
 
-    # Query di ricerca semantica nel database vettoriale (estrae i 3 frammenti piu pertinenti)
-    results = db.query(user_question, 3)
+    # 1. Determina l'intenzione dell'utente tramite LLM ("search_cv" oppure "info_cv")
+    intent = await LLMHelper.classify_intent(user_question)
 
-    # Verifica di sicurezza per evitare errori se la collezione e vuota
-    if not results or not results.get("documents") or not results["documents"][0]:
-        await cl.Message(content="Nessun profilo o documento trovato nel database per questa richiesta.").send()
-        return
+    # 2. Se l'intento e cercare un nuovo CV o profilo
+    if intent == "search_cv":
+        # Query di ricerca semantica nel database vettoriale (estrae i 3 frammenti piu pertinenti)
+        results = db.query(user_question, 3)
 
-    # Recupera i dati del candidato direttamente dai metadati del chunk (evita la doppia chiamata a LLM)
-    metadata = results["metadatas"][0][0]
-    filename = metadata.get("source", "N/D")
-    candidate_name = metadata.get("candidate_name", "Candidato")
-    candidate_email = metadata.get("email", "N/D")
-    candidate_phone = metadata.get("phone", "N/D")
+        # Verifica di sicurezza per evitare errori se la collezione e vuota
+        if not results or not results.get("documents") or not results["documents"][0]:
+            await cl.Message(
+                content="Nessun profilo o documento trovato nel database per questa richiesta.\n"
+                "Prova con altre parole chiave o con una descrizione piu dettagliata."
+            ).send()
+            return
 
-    # Contesto con nome file e testo del frammento piu significativo trovato
-    context = f"CONTESTO: nome file {filename} ecco il paragrafo piu' significativo: {results['documents'][0][0]}"
+        # Recupera i dati del candidato direttamente dai metadati del chunk (evita la doppia chiamata a LLM)
+        metadata = results["metadatas"][0][0]
+        filename = metadata.get("source", "N/D")
+        candidate_name = metadata.get("candidate_name", "Candidato")
+        candidate_email = metadata.get("email", "N/D")
+        candidate_phone = metadata.get("phone", "N/D")
 
-    # Costruzione del prompt finale arricchito con domanda, contesto e recapiti del candidato
-    prompt = LLMHelper.create_prompt(
-        context, user_question, candidate_name, candidate_email, candidate_phone
-    )
+        # Contesto con nome file e testo del frammento piu significativo trovato
+        context = f"CONTESTO: nome file {filename} ecco il paragrafo piu' significativo: {results['documents'][0][0]}"
+
+        # Salva il contesto e i dati del candidato nella sessione utente per gestire eventuali domande successive (follow-up)
+        cl.user_session.set("last_cv_context", context)
+        cl.user_session.set("last_cv_filename", filename)
+        cl.user_session.set("last_candidate_name", candidate_name)
+        cl.user_session.set("last_candidate_email", candidate_email)
+        cl.user_session.set("last_candidate_phone", candidate_phone)
+
+        # Costruzione del prompt finale arricchito con domanda, contesto e recapiti del candidato
+        prompt = LLMHelper.create_prompt(
+            context, user_question, candidate_name, candidate_email, candidate_phone
+        )
+
+    # 3. Se l'intento e chiedere informazioni aggiuntive su un CV gia individuato in precedenza
+    else:
+        last_context = cl.user_session.get("last_cv_context", "")
+
+        # Se non c'e ancora un CV di riferimento nella sessione, guida l'utente a cercarne prima uno
+        if not last_context:
+            avviso = (
+                "Non ci sono ancora profili a cui fare riferimento in questa conversazione.\n"
+                "Prova prima a cercare un candidato, ad esempio:\n"
+                "- 'Cerco uno sviluppatore Python senior'\n"
+                "- 'Chi ha esperienza in controllo di gestione?'"
+            )
+            await cl.Message(content=avviso).send()
+            return
+
+        # Recupera i dati del candidato salvati nella sessione
+        candidate_name = cl.user_session.get("last_candidate_name", "Candidato")
+        candidate_email = cl.user_session.get("last_candidate_email", "N/D")
+        candidate_phone = cl.user_session.get("last_candidate_phone", "N/D")
+
+        # Costruisce il prompt per rispondere alla domanda di follow-up mantenendo il contesto del CV gia trovato
+        prompt = LLMHelper.create_prompt(
+            last_context, user_question, candidate_name, candidate_email, candidate_phone
+        )
 
     # Recupera la cronologia dei messaggi della sessione corrente e appende il nuovo prompt
     messages = cl.user_session.get("messages", [])

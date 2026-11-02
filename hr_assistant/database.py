@@ -1,29 +1,16 @@
 # database.py - Gestione del database vettoriale persistente ChromaDB
 import os
-import httpx
 import chromadb
-from chromadb.utils import embedding_functions
 from config import Config
+from custom_embedding import CustomEmbeddingFunction
 
 
 class Database:
 
-    # Inizializza il client persistente ChromaDB e la funzione di embedding appropriata
+    # Inizializza il client persistente ChromaDB e la funzione di embedding unificata
     def __init__(self):
-        # Seleziona la funzione di embedding in base al provider configurato
-        if Config.PROVIDER == "openai":
-            self.embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
-                api_key=Config.AI_API_KEY,
-                model_name=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
-            )
-        else:
-            # Default: embedding locale con Ollama (es. embeddinggemma-2:270m con dimensione 768)
-            self.embedding_fn = embedding_functions.OllamaEmbeddingFunction(
-                url=Config.OLLAMA_URL,
-                model_name=Config.MODEL_NAME,
-            )
-            # Timeout esteso a 120s per evitare errori con Ollama durante l'elaborazione dei vettori
-            self.embedding_fn._session.timeout = httpx.Timeout(120.0)
+        # Inizializza la funzione di embedding personalizzata (supporta openai, local con SentenceTransformer, ollama)
+        self.local_ef = CustomEmbeddingFunction()
 
         # Inizializza il client persistente su cartella locale (data/chromadb)
         self.client = chromadb.PersistentClient(path=Config.PERSISTENT_DIR)
@@ -31,7 +18,7 @@ class Database:
         # Crea o recupera la collezione dei CV; gestisce l'eccezione se le dimensioni dell'embedding non coincidono
         try:
             self.collection = self.client.get_or_create_collection(
-                name=Config.COLLECTION_NAME, embedding_function=self.embedding_fn
+                name=Config.COLLECTION_NAME, embedding_function=self.local_ef
             )
         except Exception as e:
             if "dimension" in str(e).lower():
@@ -46,7 +33,7 @@ class Database:
         except Exception:
             pass
         self.collection = self.client.get_or_create_collection(
-            name=Config.COLLECTION_NAME, embedding_function=self.embedding_fn
+            name=Config.COLLECTION_NAME, embedding_function=self.local_ef
         )
 
     # Aggiunge frammenti di testo, metadati associati e identificativi univoci alla collezione
