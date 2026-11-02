@@ -1,0 +1,114 @@
+### LUCA FERRARI
+Senior Software Engineer - Web Applications  
+Email: luca.ferrari@email.com  
+Tel: +39 347 8565432  
+Torino, Italia  
+LinkedIn: linkedin.com/in/lucaferrari  
+GitHub: github.com/lucaferrari
+
+### PROFILO PROFESSIONALE
+Senior Software Engineer con 15 anni di esperienza nella progettazione e sviluppo di applicazioni web enterprise altamente scalabili. Specializzato in architetture cloud-native, microservizi e sistemi distribuiti. Comprovata esperienza nella guida di team di sviluppo e nell'implementazione di soluzioni che gestiscono milioni di utenti concorrenti.
+
+### ESPERIENZA PROFESSIONALE
+
+### Lead Software Architect | TechScale S.p.A. | 2019 - Presente
+- Guida di un team di 20 sviluppatori in progetti enterprise
+- Progettazione e implementazione di architettura microservizi che gestisce 5M+ utenti
+- Riduzione del 60% dei costi infrastrutturali attraverso ottimizzazione cloud
+- Implementazione di CI/CD pipeline con deployment automatizzati
+- Migrazione da monolite a microservizi di applicazioni legacy
+- Riduzione del 80% del tempo di deploy attraverso automazione
+
+### Senior Software Engineer | CloudNative Solutions | 2015 - 2019
+- Sviluppo di piattaforme e-commerce ad alte prestazioni
+- Implementazione di sistemi di caching distribuito
+- Ottimizzazione delle performance con riduzione del 70% dei tempi di risposta
+- Progettazione di API RESTful scalabili
+- Implementazione di sistemi di message queuing per elaborazioni asincrone
+
+### Full Stack Developer | WebTech Innovation | 2010 - 2015
+- Sviluppo frontend con framework JavaScript moderni
+- Implementazione backend con architetture event-driven
+- Creazione di sistemi di monitoraggio e logging
+- Ottimizzazione database e query performance
+- Implementazione di sistemi di autenticazione e autorizzazione
+
+### COMPETENZE TECNICHE
+
+### Linguaggi di Programmazione
+- JavaScript/TypeScript
+- Python
+- Java
+- Go
+- SQL
+
+### Frontend
+- React.js
+- Next.js
+- Vue.js
+- Redux
+- GraphQL
+
+### Backend
+- Node.js
+- Django
+- Spring Boot
+- Express.js
+- gRPC
+
+### Database
+- PostgreSQL
+- MongoDB
+- Redis
+- Elasticsearch
+- Cassandra
+
+### Cloud & DevOps
+- AWS (ECS, Lambda, S3, RDS)
+- Docker
+- Kubernetes
+- Terraform
+- Jenkins
+- GitLab CI
+
+### Architetture & Metodologie
+- Microservizi
+- Event-Driven Architecture
+- Domain-Driven Design
+- TDD/BDD
+- Agile/Scrum
+
+### PROGETTI SIGNIFICATIVI
+
+### Sistema di Pagamenti Distribuito
+- Gestione di 10.000 transazioni al secondo
+- Implementazione di pattern CQRS
+- Alta disponibilità con 99.99% uptime
+- Scalabilità automatica basata sul carico
+
+### Piattaforma E-learning
+- Supporto per 1M+ utenti concorrenti
+- Streaming video ottimizzato
+- Sistema di caching multi-livello
+- Analytics in tempo reale
+
+### CERTIFICAZIONI
+- AWS Solutions Architect Professional
+- Kubernetes Administrator (CKA)
+- MongoDB Professional Developer
+- Oracle Certified Professional, Java SE
+- Microsoft Azure Solutions Architect
+
+### FORMAZIONE
+- Master in Computer Science | Politecnico di Torino | 2010
+- Laurea in Ingegneria Informatica | Università di Torino | 2008
+
+### PUBBLICAZIONI E CONFERENZE
+- Speaker a KubeCon Europe 2023: "Scaling Microservices in Production"
+- Autore di "Building Resilient Cloud Applications" - Tech Publisher, 2022
+- Contributor a progetti open source: Kubernetes, Node.js
+
+### LINGUE
+- Italiano: Madrelingua
+- Inglese: Fluente (C2)
+- Francese: Intermedio (B1)

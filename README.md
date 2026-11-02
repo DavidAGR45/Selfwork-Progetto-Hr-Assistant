@@ -23,7 +23,7 @@ requires-python = ">=3.13,<4.0.0"
 
 ```
 
-e poi provare a rilanciare ```poetry add chromadb openai chainlit```
+e poi provare a rilanciare ```poetry add chromadb ollama openai chainlit```
 
 ## per eseguire l'applicazione
 
