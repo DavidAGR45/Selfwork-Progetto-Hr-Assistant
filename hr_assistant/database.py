@@ -36,6 +36,10 @@ class Database:
             name=Config.COLLECTION_NAME, embedding_function=self.local_ef
         )
 
+    # Elimina e ripristina la collezione svuotando completamente il database (Step 08)
+    def delete_collection(self):
+        self.reset_collection()
+
     # Aggiunge frammenti di testo, metadati associati e identificativi univoci alla collezione
     def add_documents(self, documents, metadatas, ids):
         self.collection.add(documents=documents, metadatas=metadatas, ids=ids)

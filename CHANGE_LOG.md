@@ -114,3 +114,22 @@ Tutti i progressi e le evoluzioni architetturali del progetto, dal setup inizial
   - Introduzione del metodo `_split_into_sentences` in `SemanticChunking`: previene il rischio che documenti non convenzionali o privi di punteggiatura standard (es. slide PPTX, celle Excel, dump di PDF) vengano interpretati come un'unica frase gigante, applicando un fallback intelligente a più livelli (newline, punti e virgola, due punti e virgole).
   - Taratura ottimizzata della soglia di chunking semantico (`breakpoint_percentile=65`, `buffer_size=3`) per una maggiore granularità nella suddivisione dei temi.
 
+---
+
+## 08. Upload File da Interfaccia Chat e Gestione Ciclo di Vita del Database
+* **Obiettivo**: Rendere l'assistente HR completamente interattivo nell'acquisizione dei curriculum, permettendo all'utente di caricare file (singoli o multipli) direttamente tramite l'interfaccia Chainlit con indicizzazione vettoriale immediata, e fornendo comandi completi per il controllo del ciclo di vita del database vettoriale.
+* **Cosa consisteva l'esercizio**:
+  - **Upload interattivo di documenti (`message.elements`)**:
+    - Intercettazione degli allegati caricati dall'utente tramite drag-and-drop o pulsante di allegato nella chat.
+    - Validazione del formato dei file tramite `DocumentProcessor.SUPPORTED_EXTENSIONS` per garantire che vengano processati solo tipi supportati.
+    - Archiviazione sicura nella cartella di destinazione `resumes/` tramite `shutil.move`.
+    - Pipeline di ingestion al volo (`_process_and_index_file`): conversione in Markdown, estrazione dei dati del candidato, chunking semantico e inserimento immediato dei nuovi embedding in ChromaDB con messaggi di conferma dettagliati in tempo reale.
+    - Gestione elegante dei carichi di lavoro: supporto per l'invio di soli file (senza testo), file multipli in parallelo, oppure file accompagnati da query di ricerca.
+  - **Azione di reset totale del database (`db_remove`)**:
+    - Implementazione del metodo `db.delete_collection()` in `Database` per eliminare e ripristinare la collezione vettoriale senza necessità di riavviare l'applicazione.
+    - Aggiunta del pulsante interattivo "Svuota completamente il Database" nella schermata iniziale, con notifica guidata per l'utente sulla necessità di eseguire la reindicizzazione (`db_reindex`).
+    - Aggiunta dell'azione dinamica di ricalcolo statistiche per monitorare l'evoluzione dei frammenti e dei documenti dopo ogni upload o cancellazione.
+  - **Starters di onboarding (`@cl.set_starters`)**:
+    - Configurazione di schede di avvio rapido con prompt predefiniti (es. "Ricerca candidato con competenze di un saldatore") per testare all'istante le capacità dell'assistente.
+
+

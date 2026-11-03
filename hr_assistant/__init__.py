@@ -1,5 +1,6 @@
 # __init__.py - Entry point dell'assistente HR con Chainlit
 import os
+import shutil
 import chainlit as cl
 from document_processor import DocumentProcessor
 from database import Database
@@ -15,6 +16,18 @@ added, updated, removed = dp.process_documents(db)
 print(f"Document sync complete: {added} added, {updated} updated, {removed} removed")
 
 
+# Starter predefiniti per avviare rapidamente ricerche comuni nell'interfaccia Chainlit (Step 08)
+@cl.set_starters
+async def set_starters():
+    return [
+        cl.Starter(
+            label="Ricerca candidato",
+            message="Cercami un candidato che abbia le competenze di un saldatore",
+            icon="/public/idea.svg",
+        ),
+    ]
+
+
 # Gestione del pulsante per mostrare le statistiche del database
 @cl.action_callback("db_stats")
 async def on_action(action: cl.Action):
@@ -22,7 +35,16 @@ async def on_action(action: cl.Action):
     db_info = db.get_stats()
     # Chiamata asincrona a LLM per generare una risposta formattata senza bloccare l'interfaccia
     response = await LLMHelper.get_db_stats(db_info)
-    await cl.Message(response).send()
+    # Mostra il pulsante per permettere all'utente di ricalcolare le statistiche dopo nuove modifiche (Step 08)
+    actions = [
+        cl.Action(
+            name="db_stats",
+            icon="mouse-pointer-click",
+            payload={"value": "db_stats"},
+            label="Ricalcola Statistiche Database",
+        ),
+    ]
+    await cl.Message(content=response, actions=actions).send()
 
 
 # Gestione del pulsante per forzare la reindicizzazione dei curriculum
@@ -31,6 +53,14 @@ async def on_action(action: cl.Action):
     # Rielabora i documenti e aggiorna i frammenti nel database
     added, updated, removed = dp.process_documents(db)
     message = f"DB reindicizzato con successo. Document sync complete: {added} added, {updated} updated, {removed} removed"
+    await cl.Message(message).send()
+
+
+# Gestione del pulsante per azzerare completamente il database vettoriale (Step 08)
+@cl.action_callback("db_remove")
+async def on_action(action: cl.Action):
+    db.delete_collection()
+    message = "Il database e' stato completamente rimosso. E' necessario lanciare il reindex."
     await cl.Message(message).send()
 
 
@@ -44,7 +74,7 @@ async def on_action(action: cl.Action):
 # Funzione chiamata all'avvio della chat per inizializzare l'interfaccia e la sessione
 @cl.on_chat_start
 async def start():
-    # Pulsanti di azione interattivi mostrati all'avvio
+    # Pulsanti di azione interattivi mostrati all'avvio (incluso lo svuotamento DB)
     actions = [
         cl.Action(
             name="db_stats",
@@ -57,6 +87,12 @@ async def start():
             icon="mouse-pointer-click",
             payload={"value": "db_reindex"},
             label="Reindex Database",
+        ),
+        cl.Action(
+            name="db_remove",
+            icon="mouse-pointer-click",
+            payload={"value": "db_remove"},
+            label="Svuota completamente il Database",
         ),
     ]
 
@@ -77,12 +113,55 @@ async def start():
     )
 
 
+# Elabora e indicizza un singolo documento caricato dall'utente (Step 08)
+async def _process_and_index_file(file_path: str, file_name: str) -> str:
+    documents, metadatas, ids = dp.process_single_document(file_path)
+    if documents:
+        db.add_documents(documents, metadatas, ids)
+        return f"File '{file_name}' caricato e indicizzato con successo."
+    return f"Errore nel processare il file '{file_name}'."
+
+
+# Sposta il file caricato nella cartella resumes e ne avvia l'indicizzazione immediata (Step 08)
+async def _file_upload(file) -> str:
+    file_name = file.name
+    src_file_path = file.path
+    dst_file_path = os.path.join(Config.DOCUMENTS_DIR, file_name)
+    os.makedirs(Config.DOCUMENTS_DIR, exist_ok=True)
+    shutil.move(src_file_path, dst_file_path)
+    return await _process_and_index_file(dst_file_path, file_name)
+
+
 # Funzione per gestire i messaggi inviati dall'utente
 @cl.on_message
 async def handle_message(message: cl.Message):
+    # 1. Gestione del caricamento di file dall'interfaccia chat (Step 08)
+    if message.elements:
+        await cl.Message(content="Caricamento e indicizzazione documenti in corso...").send()
+
+        # Filtra solo i file che hanno un'estensione supportata
+        files = [
+            file
+            for file in message.elements
+            if os.path.splitext(file.name.lower())[1] in DocumentProcessor.SUPPORTED_EXTENSIONS
+        ]
+
+        if files:
+            results = [await _file_upload(file) for file in files]
+        else:
+            results = ["Nessun file con formato supportato rilevato tra gli allegati."]
+
+        result_message = "\n".join(results)
+        await cl.Message(content=result_message).send()
+        await cl.Message(content=f"Completato: {len(files)} file elaborati.").send()
+
     user_question = message.content
 
-    # 1. Determina l'intenzione dell'utente tramite LLM ("search_cv" oppure "info_cv")
+    # Se l'utente ha solamente caricato dei file senza inserire una domanda di testo, conclude qui
+    if not user_question or not user_question.strip():
+        return
+
+    # 2. Determina l'intenzione dell'utente tramite LLM ("search_cv" oppure "info_cv")
     intent = await LLMHelper.classify_intent(user_question)
 
     # 2. Se l'intento e cercare un nuovo CV o profilo
