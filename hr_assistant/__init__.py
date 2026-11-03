@@ -9,8 +9,9 @@ from utils import LLMHelper
 # Inizializza il database vettoriale ChromaDB
 db = Database()
 
-# Sincronizza i file della cartella resumes con il database (aggiunge nuovi, aggiorna modificati, rimuove eliminati)
-added, updated, removed = DocumentProcessor.process_documents(db)
+# Inizializza il processore documenti MarkItDown e sincronizza i file eterogenei con il database (Step 07)
+dp = DocumentProcessor()
+added, updated, removed = dp.process_documents(db)
 print(f"Document sync complete: {added} added, {updated} updated, {removed} removed")
 
 
@@ -28,7 +29,7 @@ async def on_action(action: cl.Action):
 @cl.action_callback("db_reindex")
 async def on_action(action: cl.Action):
     # Rielabora i documenti e aggiorna i frammenti nel database
-    added, updated, removed = DocumentProcessor.process_documents(db)
+    added, updated, removed = dp.process_documents(db)
     message = f"DB reindicizzato con successo. Document sync complete: {added} added, {updated} updated, {removed} removed"
     await cl.Message(message).send()
 

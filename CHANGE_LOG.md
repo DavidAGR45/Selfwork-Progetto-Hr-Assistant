@@ -102,3 +102,15 @@ Tutti i progressi e le evoluzioni architetturali del progetto, dal setup inizial
     - `"info_cv"`: riconosce domande di follow-up (es. "quali sono i suoi contatti?", "parlami delle sue esperienze lavorative") relative all'ultimo profilo mostrato.
   - Utilizzo di `cl.user_session` per salvare e mantenere in memoria il contesto dell'ultimo CV, il file sorgente e i recapiti del candidato.
   - Eliminazione di chiamate vettoriali ridondanti per i follow-up e gestione di messaggi di guida se l'utente pone domande specifiche prima di aver cercato un profilo.
+
+---
+
+## 07. Supporto Documenti Eterogenei (MarkItDown) e Suddivisione Frasi Avanzata
+* **Obiettivo**: Estendere l'ingestion dell'assistente HR a documenti in formati eterogenei del mondo reale (PDF, DOCX, PPTX, XLSX, CSV, HTML, archivi ZIP), superando il vincolo dei soli file di testo semplice (`.txt`).
+* **Cosa consisteva l'esercizio**:
+  - Adozione della libreria Microsoft **`markitdown`** (`poetry add markitdown`) per la conversione universale ad alta fedeltà di documenti ricchi in testo Markdown strutturato.
+  - Mappatura granulare delle estensioni supportate (`SUPPORTED_EXTENSIONS`) con classificazione per tipologia (`document`, `presentation`, `spreadsheet`, `data`, `web`, `archive`) e arricchimento dei metadati vettoriali (`file_type`, `mime_type`, `extension`).
+  - Gestione trasparente degli archivi `.zip`: estrazione in cartella temporanea (`tempfile.TemporaryDirectory`) e scansione ricorsiva dei documenti interni supportati.
+  - Introduzione del metodo `_split_into_sentences` in `SemanticChunking`: previene il rischio che documenti non convenzionali o privi di punteggiatura standard (es. slide PPTX, celle Excel, dump di PDF) vengano interpretati come un'unica frase gigante, applicando un fallback intelligente a più livelli (newline, punti e virgola, due punti e virgole).
+  - Taratura ottimizzata della soglia di chunking semantico (`breakpoint_percentile=65`, `buffer_size=3`) per una maggiore granularità nella suddivisione dei temi.
+
