@@ -154,5 +154,23 @@ Tutti i progressi e le evoluzioni architetturali del progetto, dal setup inizial
     - Effetti glow soffusi in Dark Mode e ombre morbide in Light Mode per i pulsanti d'azione interattivi.
     - Raggio di curvatura arrotondato per le card dei messaggi e scrollbar moderna e minimale.
 
+---
+
+## Integrazione e Diagnostica OpenAI Embeddings (`text-embedding-3-small`)
+* **Obiettivo**: Rendere il sistema di embedding cloud di OpenAI pienamente operativo, configurabile e resiliente, risolvendo il disallineamento dei modelli e fornendo messaggi di errore parlanti e gestione dinamica delle dimensioni vettoriali in ChromaDB.
+* **Cosa consisteva l'intervento**:
+  - **Risoluzione dinamica del modello (`config.py`)**:
+    - Configurazione del modello `OPENAI_EMBEDDING_MODEL` (default: `text-embedding-3-small`, 1536 dimensioni) e disaccoppiamento dal modello Ollama.
+    - Supporto esplicito per `OPENAI_BASE_URL` per consentire l'utilizzo di endpoint custom/proxy o Azure.
+  - **Gestione guidata degli errori e diagnostica (`custom_embedding.py`)**:
+    - Validazione preventiva della chiave `OPENAI_API_KEY`: se assente o segnaposto, avvisa chiaramente l'utente su come configurare il file `.env`.
+    - Intercettazione specifica degli errori OpenAI durante la generazione dei vettori: esaurimento credito/quota (`insufficient_quota` 429), chiave non valida (`invalid_api_key` 401) e rate limiting.
+    - Introduzione del metodo di diagnostica rapida `CustomEmbeddingFunction.test_connection()` per validare la connessione e le dimensioni vettoriali.
+  - **Transizione automatica dimensioni in ChromaDB (`database.py`)**:
+    - Gestione del mismatch delle dimensioni in `add_documents` e `query`: se si passa da Ollama (768 dimensioni) a OpenAI (1536 dimensioni) o viceversa, la collezione si resetta automaticamente senza errori di schema.
+  - **Protezione interfaccia utente (`__init__.py`)**:
+    - Incapsulamento con gestione errori di `db_reindex` e caricamento documenti per notificare l'utente in chat senza bloccare il server Chainlit.
+
+
 
 

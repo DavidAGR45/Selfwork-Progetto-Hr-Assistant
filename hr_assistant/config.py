@@ -22,11 +22,22 @@ class Config:
 
     # Configurazione del modello di Embedding (ChromaDB / Ollama / OpenAI / SentenceTransformer)
     EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", PROVIDER).lower()
-    MODEL_NAME = os.getenv("OLLAMA_EMBEDDING_MODEL", "embeddinggemma-2:270m")
+    OLLAMA_EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "embeddinggemma-2:270m")
+    OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+    LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "all-mpnet-base-v2")
     MODEL_PATH = os.getenv("MODEL_PATH", "modelli/mio_modello")
     OLLAMA_URL = os.getenv("OLLAMA_EMBEDDING_URL", "http://localhost:11434/api/embeddings")
     OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_EMBEDDINGS_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+    # Risoluzione dinamica del modello di embedding appropriato in base al provider
+    if EMBEDDING_PROVIDER == "openai":
+        MODEL_NAME = OPENAI_EMBEDDING_MODEL
+    elif EMBEDDING_PROVIDER == "local":
+        MODEL_NAME = LOCAL_EMBEDDING_MODEL
+    else:
+        MODEL_NAME = OLLAMA_EMBEDDING_MODEL
 
     # Configurazione dei modelli di Chat e completamento in base al provider scelto
     if PROVIDER == "groq":

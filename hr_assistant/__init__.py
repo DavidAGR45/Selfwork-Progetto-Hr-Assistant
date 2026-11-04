@@ -52,9 +52,12 @@ async def on_action(action: cl.Action):
 async def on_action(action: cl.Action):
     await cl.Message(author="system_assistant", content="Reindicizzazione in corso...").send()
     # Rielabora i documenti e aggiorna i frammenti nel database
-    added, updated, removed = dp.process_documents(db)
-    message = f"DB reindicizzato con successo. Document sync complete: {added} added, {updated} updated, {removed} removed"
-    await cl.Message(author="system_assistant", content=message).send()
+    try:
+        added, updated, removed = dp.process_documents(db)
+        message = f"DB reindicizzato con successo. Document sync complete: {added} added, {updated} updated, {removed} removed"
+        await cl.Message(author="system_assistant", content=message).send()
+    except Exception as e:
+        await cl.Message(author="system_assistant", content=f"⚠️ Errore durante la reindicizzazione: {str(e)}").send()
 
 
 # Gestione del pulsante per azzerare completamente il database vettoriale (Step 08)
@@ -116,11 +119,14 @@ async def start():
 
 # Elabora e indicizza un singolo documento caricato dall'utente (Step 08)
 async def _process_and_index_file(file_path: str, file_name: str) -> str:
-    documents, metadatas, ids = dp.process_single_document(file_path)
-    if documents:
-        db.add_documents(documents, metadatas, ids)
-        return f"File '{file_name}' caricato e indicizzato con successo."
-    return f"Errore nel processare il file '{file_name}'."
+    try:
+        documents, metadatas, ids = dp.process_single_document(file_path)
+        if documents:
+            db.add_documents(documents, metadatas, ids)
+            return f"File '{file_name}' caricato e indicizzato con successo."
+        return f"Errore nel processare il file '{file_name}'."
+    except Exception as e:
+        return f"⚠️ Errore durante l'elaborazione o indicizzazione di '{file_name}': {str(e)}"
 
 
 # Sposta il file caricato nella cartella resumes e ne avvia l'indicizzazione immediata (Step 08)

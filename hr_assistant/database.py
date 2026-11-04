@@ -42,7 +42,16 @@ class Database:
 
     # Aggiunge frammenti di testo, metadati associati e identificativi univoci alla collezione
     def add_documents(self, documents, metadatas, ids):
-        self.collection.add(documents=documents, metadatas=metadatas, ids=ids)
+        try:
+            self.collection.add(documents=documents, metadatas=metadatas, ids=ids)
+        except Exception as e:
+            # Se la dimensione dei vettori non coincide (es. cambio da Ollama a OpenAI o viceversa), resetta e reinserisce
+            if "dimension" in str(e).lower():
+                print("Rilevato mismatch dimensioni embedding in add_documents. Resetting collection...")
+                self.reset_collection()
+                self.collection.add(documents=documents, metadatas=metadatas, ids=ids)
+            else:
+                raise e
 
     # Esegue la ricerca per similarita vettoriale (cosine similarity) rispetto alla domanda dell'utente
     def query(self, query_text, n_results=1):
