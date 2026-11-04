@@ -1,0 +1,65 @@
+/* app.css - Personalizzazione dello stile Modern AI / Emerald */
+
+/* Transizioni fluide al cambio tema Dark/Light */
+*, *::before, *::after {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+
+/* Raggio di curvatura moderno e pulito per le card e i messaggi */
+.step, .message-content {
+    border-radius: 12px !important;
+}
+
+/* Pulsanti d'azione (Action buttons) con stile Modern AI */
+button[data-action="true"], 
+.cl-action-button, 
+button.bg-primary {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    border-radius: 10px !important;
+    letter-spacing: -0.01em;
+}
+
+/* Effetto glow elegante sui pulsanti primari in Dark Mode */
+.dark button.bg-primary,
+.dark .bg-primary {
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.25) !important;
+}
+
+.dark button.bg-primary:hover,
+.dark .bg-primary:hover {
+    box-shadow: 0 0 24px rgba(52, 211, 153, 0.45) !important;
+}
+
+/* Effetto ombra pulito sui pulsanti primari in Light Mode */
+.light button.bg-primary,
+.light .bg-primary {
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2) !important;
+}
+
+/* Scrollbar sottile e minimalista */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 9999px;
+}
+
+/* Rifinitura del campo input chat */
+#chat-input {
+    border-radius: 12px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+

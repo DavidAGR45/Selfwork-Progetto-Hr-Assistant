@@ -44,16 +44,17 @@ async def on_action(action: cl.Action):
             label="Ricalcola Statistiche Database",
         ),
     ]
-    await cl.Message(content=response, actions=actions).send()
+    await cl.Message(author="system_assistant", content=response, actions=actions).send()
 
 
 # Gestione del pulsante per forzare la reindicizzazione dei curriculum
 @cl.action_callback("db_reindex")
 async def on_action(action: cl.Action):
+    await cl.Message(author="system_assistant", content="Reindicizzazione in corso...").send()
     # Rielabora i documenti e aggiorna i frammenti nel database
     added, updated, removed = dp.process_documents(db)
     message = f"DB reindicizzato con successo. Document sync complete: {added} added, {updated} updated, {removed} removed"
-    await cl.Message(message).send()
+    await cl.Message(author="system_assistant", content=message).send()
 
 
 # Gestione del pulsante per azzerare completamente il database vettoriale (Step 08)
@@ -61,14 +62,14 @@ async def on_action(action: cl.Action):
 async def on_action(action: cl.Action):
     db.delete_collection()
     message = "Il database e' stato completamente rimosso. E' necessario lanciare il reindex."
-    await cl.Message(message).send()
+    await cl.Message(author="system_assistant", content=message).send()
 
 
 # Pulsante di test / saluto
 @cl.action_callback("say_hello")
 async def on_action(action: cl.Action):
     action = action.payload["value"]
-    await cl.Message(f"Hello {action}").send()
+    await cl.Message(author="system_assistant", content=f"Hello {action}").send()
 
 
 # Funzione chiamata all'avvio della chat per inizializzare l'interfaccia e la sessione
@@ -96,7 +97,7 @@ async def start():
         ),
     ]
 
-    await cl.Message(content="Informazioni del sistema:", actions=actions).send()
+    await cl.Message(author="system_assistant", content="Informazioni del sistema:", actions=actions).send()
 
     # Messaggio di sistema per definire il ruolo dell'assistente HR
     cl.user_session.set(
@@ -137,7 +138,7 @@ async def _file_upload(file) -> str:
 async def handle_message(message: cl.Message):
     # 1. Gestione del caricamento di file dall'interfaccia chat (Step 08)
     if message.elements:
-        await cl.Message(content="Caricamento e indicizzazione documenti in corso...").send()
+        await cl.Message(author="system_assistant", content="Caricamento e indicizzazione documenti in corso...").send()
 
         # Filtra solo i file che hanno un'estensione supportata
         files = [
@@ -152,8 +153,8 @@ async def handle_message(message: cl.Message):
             results = ["Nessun file con formato supportato rilevato tra gli allegati."]
 
         result_message = "\n".join(results)
-        await cl.Message(content=result_message).send()
-        await cl.Message(content=f"Completato: {len(files)} file elaborati.").send()
+        await cl.Message(author="system_assistant", content=result_message).send()
+        await cl.Message(author="system_assistant", content=f"Completato: {len(files)} file elaborati.").send()
 
     user_question = message.content
 
@@ -172,6 +173,7 @@ async def handle_message(message: cl.Message):
         # Verifica di sicurezza per evitare errori se la collezione e vuota
         if not results or not results.get("documents") or not results["documents"][0]:
             await cl.Message(
+                author="hr_assistant",
                 content="Nessun profilo o documento trovato nel database per questa richiesta.\n"
                 "Prova con altre parole chiave o con una descrizione piu dettagliata."
             ).send()
@@ -211,7 +213,7 @@ async def handle_message(message: cl.Message):
                 "- 'Cerco uno sviluppatore Python senior'\n"
                 "- 'Chi ha esperienza in controllo di gestione?'"
             )
-            await cl.Message(content=avviso).send()
+            await cl.Message(author="hr_assistant", content=avviso).send()
             return
 
         # Recupera i dati del candidato salvati nella sessione
@@ -228,8 +230,8 @@ async def handle_message(message: cl.Message):
     messages = cl.user_session.get("messages", [])
     messages.append({"role": "user", "content": prompt})
 
-    # Inizializza un messaggio vuoto per inviare la risposta in streaming
-    response_message = cl.Message(content="")
+    # Inizializza un messaggio vuoto per inviare la risposta in streaming con l'autore hr_assistant (Step 09)
+    response_message = cl.Message(author="hr_assistant", content="")
     await response_message.send()
 
     try:
@@ -249,7 +251,7 @@ async def handle_message(message: cl.Message):
     except Exception as e:
         # Gestione errori in caso di problemi di comunicazione con il modello
         error_message = f"An error occurred: {str(e)}"
-        await cl.Message(content=error_message).send()
+        await cl.Message(author="hr_assistant", content=error_message).send()
         print(error_message)
 
     # Salva la cronologia aggiornata nella sessione utente

@@ -132,4 +132,27 @@ Tutti i progressi e le evoluzioni architetturali del progetto, dal setup inizial
   - **Starters di onboarding (`@cl.set_starters`)**:
     - Configurazione di schede di avvio rapido con prompt predefiniti (es. "Ricerca candidato con competenze di un saldatore") per testare all'istante le capacità dell'assistente.
 
+---
+
+## 09. Personalizzazione Grafica UI, Tematizzazione 'Modern AI / Emerald' & Multi-Agent Avatars
+* **Obiettivo**: Dotare l'assistente HR di una completa identità visiva (branding & UI/UX design) bivalente sia per Dark Mode sia per Light Mode, introducendo una separazione netta dei ruoli degli agenti tramite avatar dedicati e fogli di stile avanzati per un'esperienza d'uso professionale ed enterprise.
+* **Cosa consisteva l'esercizio**:
+  - **Architettura Multi-Autore in Chat (`author`)**:
+    - Differenziazione dei ruoli comunicativi: `author="system_assistant"` per le notifiche operative di sistema (indicizzazione, statistiche, reset e caricamento documenti) e `author="hr_assistant"` per l'assistente HR specializzato nelle risposte sui curriculum.
+    - Meccanismo di auto-discovery degli avatar di Chainlit (`public/avatars/{author}.png`):
+      - Assegnazione dell'avatar Volpe 🦊 (`hr_assistant.png`) per il recruiter AI.
+      - Assegnazione dell'avatar Fantasma 👻 (`system_assistant.png`) per il bot di sistema.
+  - **Tematizzazione Dual-Mode "Modern AI / Emerald" (`public/theme.json`)**:
+    - **Dark Mode**: sfondo Slate-950 profondo (`#0b0f17`), card Slate-900 levigate e accenti verde menta/smeraldo fluorescente (`#34d399`) con elevato contrasto e comfort visivo.
+    - **Light Mode**: sfondo Slate-50 chiarissimo (`#f8fafc`), card in bianco puro con bordature nitide e primario verde smeraldo intenso (`#059669`).
+    - Tipografia moderna integrata tramite Google Font **Inter**.
+  - **Branding, Loghi e Favicon (`public/` e `.chainlit/config.toml`)**:
+    - Installazione del set completo di favicon (`favicon.ico`, `favicon.png`, `apple-touch-icon.png`) derivato dall'icona Volpe 🦊.
+    - Configurazione del nome applicativo `TalentAI • HR Assistant`, tema predefinito `dark` e foglio di stile dedicato `/public/app.css`.
+    - Gestione del caching persistente del browser tramite script dedicato `/public/app.js` (`custom_js`) per l'aggiornamento dinamico istantaneo dell'icona della scheda del browser.
+  - **CSS Personalizzato (`public/app.css`)**:
+    - Effetti glow soffusi in Dark Mode e ombre morbide in Light Mode per i pulsanti d'azione interattivi.
+    - Raggio di curvatura arrotondato per le card dei messaggi e scrollbar moderna e minimale.
+
+
 
